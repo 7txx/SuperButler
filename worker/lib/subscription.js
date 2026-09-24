@@ -67,7 +67,10 @@ export function buildView(row, today) {
     days_left: daysLeft,
     run_days: runDays,
     period_text: periodText(row.period_value, row.period_unit),
-    target_lunar: lunarText(...row.target_date.split('-').map(Number))
+    target_lunar: lunarText(...row.target_date.split('-').map(Number)),
+    lunar_text: row.is_lunar
+      ? lunarText(...row.target_date.split('-').map(Number))
+      : ''
   }
   if (row.last_renew_at) {
     view.last_renew_lunar = lunarText(...row.last_renew_at.split('-').map(Number))

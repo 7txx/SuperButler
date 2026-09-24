@@ -27,6 +27,12 @@ export function unixToDateStr(sec) {
   return toDateStr(new Date(sec * 1000))
 }
 
+/** 当前北京时间 HH:MM（用于按用户设定的本地时刻发送提醒） */
+export function beijingTimeNow() {
+  const d = new Date(Date.now() + 8 * 3600 * 1000)
+  return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`
+}
+
 /**
  * 公历日期加周期
  * @param s YYYY-MM-DD

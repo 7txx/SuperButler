@@ -11,10 +11,10 @@
         <template #default="{ row }">
           <div class="font-medium text-white">{{ row.name }}</div>
           <div class="mt-1 flex flex-wrap gap-1">
-            <el-tag size="small" :type="typeMeta[row.type].tag" effect="plain">
-              {{ typeMeta[row.type].label }}
-            </el-tag>
             <el-tag v-if="row.is_lunar" size="small" type="warning" effect="plain">农历</el-tag>
+            <el-tag v-if="row.auto_renew" size="small" type="success" effect="plain">
+              {{ row.renew_offset_days > 0 ? `到期${row.renew_offset_days}天后自动续期` : '到期自动续期' }}
+            </el-tag>
             <el-tag v-if="row.pending_renew" size="small" type="danger" effect="plain">待续期</el-tag>
           </div>
         </template>
@@ -77,14 +77,14 @@
         <el-form-item label="名称" required>
           <el-input v-model="form.name" placeholder="域名/生日" />
         </el-form-item>
-        <el-form-item label="类型">
-          <el-radio-group v-model="form.type">
-            <el-radio-button value="cycle">循环订阅</el-radio-button>
-            <el-radio-button value="reset">到期重置</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="农历日期">
-          <el-switch v-model="form.is_lunar" active-text="按农历计算（生日等）" />
+        <el-form-item label="周期">
+          <el-input-number v-model="form.period_value" :min="1" />
+          <el-select v-model="form.period_unit" class="ml-2 w-24">
+            <el-option label="天" value="day" />
+            <el-option label="个月" value="month" />
+            <el-option label="年" value="year" />
+          </el-select>
+          <el-switch v-model="form.is_lunar" class="ml-4" active-text="农历周期" />
         </el-form-item>
         <el-form-item label="到期日期" required>
           <el-date-picker
@@ -94,20 +94,23 @@
             placeholder="选择公历到期日期（农历项选对应公历日即可）"
             class="!w-full"
           />
-        </el-form-item>
-        <el-form-item label="周期">
-          <el-input-number v-model="form.period_value" :min="1" />
-          <el-select v-model="form.period_unit" class="ml-2 w-24">
-            <el-option label="天" value="day" />
-            <el-option label="个月" value="month" />
-            <el-option label="年" value="year" />
-          </el-select>
+          <p v-if="form.is_lunar && lunarPreview" class="mt-1 text-xs text-amber-300/80">
+            农历：{{ lunarPreview }}
+          </p>
         </el-form-item>
         <el-form-item label="提前提醒">
-          <el-select v-model="form.remind_days" placeholder="选择开始提醒的时间" class="!w-full">
-            <el-option v-for="d in [30, 14, 7, 3, 1, 0]" :key="d" :label="d === 0 ? '到期当天开始' : `提前 ${d} 天开始`" :value="d" />
-          </el-select>
-          <p class="mt-1 text-xs text-brand-200/40">到达所选时间后每天发送一次通知，直到你点击续期</p>
+          <el-input-number v-model="form.remind_days" :min="0" :max="365" />
+          <el-time-picker
+            v-model="form.remind_time"
+            format="HH:mm"
+            value-format="HH:mm"
+            :clearable="false"
+            placeholder="发送时间"
+            class="ml-2 !w-32"
+          />
+          <p class="mt-1 text-xs text-brand-200/40">
+            从到期前 {{ form.remind_days }} 天开始，每天 {{ form.remind_time || '08:00' }}（北京时间）发送一次提醒，直到续期
+          </p>
         </el-form-item>
         <el-form-item label="通知渠道">
           <el-select v-model="form.channel_ids" multiple clearable placeholder="留空则发送到全部已启用渠道" class="!w-full">
@@ -115,7 +118,17 @@
           </el-select>
         </el-form-item>
         <el-form-item label="自动续期">
-          <el-switch v-model="form.auto_renew" active-text="到期后自动顺延（到期重置类型不受此影响）" />
+          <el-switch v-model="form.auto_renew" />
+          <template v-if="form.auto_renew">
+            <span class="ml-4 mr-2 text-sm text-brand-200/70">过期续期天数</span>
+            <el-input-number v-model="form.renew_offset_days" :min="0" :max="365" />
+          </template>
+          <p class="mt-1 text-xs text-brand-200/40">
+            <template v-if="form.auto_renew">
+              {{ form.renew_offset_days === 0 ? '到期当天自动续期' : `到期 ${form.renew_offset_days} 天后自动续期` }}，续期后提醒自动停止
+            </template>
+            <template v-else>不自动续期，到期后每天提醒，直到你手动点击续期</template>
+          </p>
         </el-form-item>
         <el-form-item label="启用">
           <el-switch v-model="form.enabled" />
@@ -144,15 +157,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
 import { api } from '../../api.js'
-
-const typeMeta = {
-  cycle: { label: '循环订阅', tag: '' },
-  reset: { label: '到期重置', tag: 'success' }
-}
+import { lunarText } from '../../../worker/lib/lunar.js'
 
 const list = ref([])
 const channelList = ref([])
@@ -163,12 +172,13 @@ const dialog = ref(false)
 const emptyForm = () => ({
   id: null,
   name: '',
-  type: 'cycle',
   is_lunar: false,
   target_date: '',
   period_value: 1,
   period_unit: 'year',
   remind_days: 7,
+  remind_time: '08:00',
+  renew_offset_days: 0,
   channel_ids: [],
   auto_renew: true,
   enabled: true,
@@ -178,6 +188,16 @@ const emptyForm = () => ({
   remark: ''
 })
 const form = ref(emptyForm())
+
+// 农历预览：选择公历日期后实时显示对应的农历文本
+const lunarPreview = computed(() => {
+  if (!form.value.is_lunar || !/^\d{4}-\d{2}-\d{2}$/.test(form.value.target_date || '')) return ''
+  try {
+    return lunarText(...form.value.target_date.split('-').map(Number))
+  } catch {
+    return ''
+  }
+})
 
 async function load() {
   loading.value = true

@@ -99,4 +99,21 @@ console.log('[provision] 初始化数据库...')
 execSync(`npx wrangler d1 execute ${DB_NAME} --remote --file=./schema.sql`, {
   stdio: 'inherit'
 })
+
+// 4. 老库迁移：subscriptions 补充新列 / 统一类型
+// SQLite 不支持 ADD COLUMN IF NOT EXISTS，列已存在时报错忽略即可
+const migrations = [
+  `ALTER TABLE subscriptions ADD COLUMN remind_time TEXT NOT NULL DEFAULT '08:00'`,
+  `ALTER TABLE subscriptions ADD COLUMN renew_offset_days INTEGER NOT NULL DEFAULT 0`,
+  `UPDATE subscriptions SET type='cycle' WHERE type<>'cycle'`
+]
+for (const sql of migrations) {
+  try {
+    execSync(`npx wrangler d1 execute ${DB_NAME} --remote --command="${sql}"`, {
+      stdio: 'inherit'
+    })
+  } catch {
+    console.log(`[provision] 迁移跳过（可能已执行过）: ${sql.slice(0, 60)}...`)
+  }
+}
 console.log('[provision] 完成')

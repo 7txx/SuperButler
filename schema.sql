@@ -70,14 +70,16 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   tags           TEXT NOT NULL DEFAULT '',
   amount         REAL NOT NULL DEFAULT 0,
   currency       TEXT NOT NULL DEFAULT 'CNY',
-  type           TEXT NOT NULL,                  -- cycle 循环订阅 | reset 到期重置 | repeat 固定重复
+  type           TEXT NOT NULL,                  -- 历史遗留列，新数据统一写 cycle
   is_lunar       INTEGER NOT NULL DEFAULT 0,
   target_date    TEXT NOT NULL,                  -- 下次到期 YYYY-MM-DD（公历）
   period_value   INTEGER NOT NULL DEFAULT 1,
   period_unit    TEXT NOT NULL DEFAULT 'year',   -- day | month | year
   lunar_month    INTEGER,
   lunar_day      INTEGER,
-  remind_days    TEXT NOT NULL DEFAULT '7',
+  remind_days    TEXT NOT NULL DEFAULT '7',      -- 提前提醒天数（单值）
+  remind_time    TEXT NOT NULL DEFAULT '08:00',  -- 每天提醒发送时间（北京时间 HH:MM）
+  renew_offset_days INTEGER NOT NULL DEFAULT 0,  -- 到期后第 N 天自动续期（0=到期当天）
   enabled        INTEGER NOT NULL DEFAULT 1,
   auto_renew     INTEGER NOT NULL DEFAULT 1,
   pending_renew  INTEGER NOT NULL DEFAULT 0,

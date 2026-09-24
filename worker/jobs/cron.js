@@ -2,7 +2,7 @@
 // 定时任务：网站检测 + 订阅到期处理与提醒
 // ============================================================
 
-import { toDateStr, diffDays, unixToDateStr } from '../lib/dateutil.js'
+import { toDateStr, diffDays, unixToDateStr, beijingTimeNow } from '../lib/dateutil.js'
 import { lunarText } from '../lib/lunar.js'
 import { checkMonitor } from '../lib/monitor.js'
 import { computeNext, remindThreshold } from '../lib/subscription.js'
@@ -103,45 +103,53 @@ async function pushReminder(env, sub, daysLeft) {
   return sent
 }
 
-/** 处理单个订阅：逾期顺延 + 到期后每天提醒直到续期 */
+/**
+ * 处理单个订阅
+ * 1) 自动续期开启时：到期后第 renew_offset_days 天自动顺延（0=到期当天）
+ * 2) 提醒：从「到期 - remind_days」起，每天 remind_time（北京时间）发送一次，
+ *    直到续期发生；逾期未续继续每天提醒
+ */
 export async function processSubscription(env, sub) {
   const today = toDateStr()
   const actions = { advanced: false, reminded: false }
+  const offset = Math.max(0, Number(sub.renew_offset_days) || 0)
 
-  // 1) 已到期
-  if (diffDays(today, sub.target_date) < 0) {
-    if (sub.type === 'cycle' && sub.auto_renew) {
-      // 循环订阅且自动续期：自动顺延到未来，提醒随之停止
-      let t = sub.target_date
-      for (let i = 0; i < 500 && t < today; i++) {
-        t = computeNext({ ...sub, target_date: t }, t)
-      }
-      await env.DB.prepare(
-        `UPDATE subscriptions
-           SET target_date=?, pending_renew=0, last_renew_at=?, notified_keys=''
-         WHERE id=?`
-      )
-        .bind(t, sub.target_date, sub.id)
-        .run()
-      sub.target_date = t
-      sub.pending_renew = 0
-      sub.notified_keys = ''
-      actions.advanced = true
-    } else {
-      // 到期重置 / 关闭自动续期：保持逾期、标记待续期，每天继续通知直到手动续期
-      if (!sub.pending_renew) {
-        await env.DB.prepare('UPDATE subscriptions SET pending_renew=1 WHERE id=?')
-          .bind(sub.id)
-          .run()
-        sub.pending_renew = 1
-      }
+  // 1) 到达自动续期点（逾期天数 >= renew_offset_days）
+  if (sub.auto_renew && diffDays(today, sub.target_date) <= -offset) {
+    let t = sub.target_date
+    for (let i = 0; i < 500 && t <= today; i++) {
+      t = computeNext({ ...sub, target_date: t }, t)
     }
+    await env.DB.prepare(
+      `UPDATE subscriptions
+         SET target_date=?, pending_renew=0, last_renew_at=?, notified_keys=''
+       WHERE id=?`
+    )
+      .bind(t, today, sub.id)
+      .run()
+    sub.target_date = t
+    sub.pending_renew = 0
+    sub.notified_keys = ''
+    actions.advanced = true
+  } else if (diffDays(today, sub.target_date) < 0 && !sub.pending_renew) {
+    // 逾期未续：标记待续期
+    await env.DB.prepare('UPDATE subscriptions SET pending_renew=1 WHERE id=?')
+      .bind(sub.id)
+      .run()
+    sub.pending_renew = 1
   }
 
-  // 2) 进入提醒窗口（含逾期）：每天发送一次，notified_keys 记录最后发送日期
+  // 2) 提醒窗口内（含逾期）且到了当天发送时间：每天一次，notified_keys 按日去重
   const daysLeft = diffDays(today, sub.target_date)
   const threshold = remindThreshold(sub.remind_days)
-  if (daysLeft <= threshold && String(sub.notified_keys || '') !== today) {
+  const remindTime = /^\d{2}:\d{2}$/.test(String(sub.remind_time || ''))
+    ? sub.remind_time
+    : '08:00'
+  if (
+    daysLeft <= threshold &&
+    String(sub.notified_keys || '') !== today &&
+    beijingTimeNow() >= remindTime
+  ) {
     await pushReminder(env, sub, daysLeft)
     await env.DB.prepare('UPDATE subscriptions SET notified_keys=? WHERE id=?')
       .bind(today, sub.id)

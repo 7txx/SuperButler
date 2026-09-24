@@ -23,22 +23,25 @@ routes.get('/', async (c) => {
 })
 
 function normalizeBody(body) {
-  const type = ['cycle', 'reset'].includes(body.type) ? body.type : 'cycle'
   const unit = ['day', 'month', 'year'].includes(body.period_unit) ? body.period_unit : 'year'
+  const remindDays = parseRemindDays(body.remind_days)
+  const remindTime = /^\d{2}:\d{2}$/.test(String(body.remind_time || ''))
+    ? String(body.remind_time)
+    : '08:00'
   return {
     name: String(body.name || '').trim(),
     remark: String(body.remark || '').trim(),
     tags: String(body.tags || '').trim(),
     amount: Number(body.amount) || 0,
     currency: String(body.currency || 'CNY').trim() || 'CNY',
-    type,
+    type: 'cycle',
     is_lunar: body.is_lunar ? 1 : 0,
     target_date: String(body.target_date || '').slice(0, 10),
     period_value: Math.max(1, parseInt(body.period_value, 10) || 1),
     period_unit: unit,
-    remind_days: parseRemindDays(body.remind_days).length
-      ? String(Math.max(...parseRemindDays(body.remind_days)))
-      : '7',
+    remind_days: String(remindDays.length ? remindDays[0] : 7),
+    remind_time: remindTime,
+    renew_offset_days: Math.max(0, parseInt(body.renew_offset_days, 10) || 0),
     enabled: body.enabled === false || body.enabled === 0 ? 0 : 1,
     auto_renew: body.auto_renew === false || body.auto_renew === 0 ? 0 : 1,
     channel_ids: Array.isArray(body.channel_ids)
@@ -67,13 +70,13 @@ routes.post('/', async (c) => {
     `INSERT INTO subscriptions
       (name, remark, tags, amount, currency, type, is_lunar, target_date,
        period_value, period_unit, lunar_month, lunar_day, remind_days,
-       enabled, auto_renew, channel_ids, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+       remind_time, renew_offset_days, enabled, auto_renew, channel_ids, created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   )
     .bind(
       d.name, d.remark, d.tags, d.amount, d.currency, d.type, d.is_lunar, d.target_date,
       d.period_value, d.period_unit, lunarMonth, lunarDay, d.remind_days,
-      d.enabled, d.auto_renew, d.channel_ids, now
+      d.remind_time, d.renew_offset_days, d.enabled, d.auto_renew, d.channel_ids, now
     )
     .run()
   return c.json({ ok: true, id: result.meta.last_row_id })
@@ -101,13 +104,13 @@ routes.put('/:id', async (c) => {
     `UPDATE subscriptions SET
        name=?, remark=?, tags=?, amount=?, currency=?, type=?, is_lunar=?, target_date=?,
        period_value=?, period_unit=?, lunar_month=?, lunar_day=?, remind_days=?,
-       enabled=?, auto_renew=?, channel_ids=?, notified_keys=''
+       remind_time=?, renew_offset_days=?, enabled=?, auto_renew=?, channel_ids=?, notified_keys=''
      WHERE id=?`
   )
     .bind(
       d.name, d.remark, d.tags, d.amount, d.currency, d.type, d.is_lunar, d.target_date,
       d.period_value, d.period_unit, lunarMonth, lunarDay, d.remind_days,
-      d.enabled, d.auto_renew, d.channel_ids, id
+      d.remind_time, d.renew_offset_days, d.enabled, d.auto_renew, d.channel_ids, id
     )
     .run()
   return c.json({ ok: true })
