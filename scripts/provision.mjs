@@ -23,13 +23,24 @@ function parseJsonList(out) {
   return JSON.parse(out.slice(i))
 }
 
+// 表格输出兜底：标题按表格单元格精确匹配（避免 KV 误配 lover-KV 之类），同行提取 ID
+function matchIdInTable(out, title, idPattern) {
+  const cell = new RegExp(`[│|]\\s*${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[│|]`)
+  const line = out.split('\n').find((l) => cell.test(l) && idPattern.test(l))
+  return line?.match(idPattern)?.[0] || ''
+}
+
 // 可接受的 KV 命名空间标题（含一键部署向导可能使用的名称）
 const KV_TITLES = [KV_TITLE, `${DB_NAME}-${KV_TITLE}`, DB_NAME]
+const KV_ID_RE = /[0-9a-f]{32}/i
+const D1_ID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
 
 function findD1Id() {
   try {
-    const list = parseJsonList(run('npx wrangler d1 list --json'))
-    return list.find((d) => d.name === DB_NAME)?.uuid || ''
+    const out = run('npx wrangler d1 list')
+    const fromJson = parseJsonList(out).find((d) => d.name === DB_NAME)?.uuid
+    if (fromJson) return fromJson
+    return matchIdInTable(out, DB_NAME, D1_ID_RE)
   } catch {
     return ''
   }
@@ -38,7 +49,9 @@ function findD1Id() {
 function createD1() {
   try {
     const out = run(`npx wrangler d1 create ${DB_NAME}`)
-    const id = out.match(/database_id\s*=\s*"([0-9a-f-]{36})"/i)?.[1]
+    const id =
+      out.match(/database_id["']?\s*[:=]\s*"([0-9a-f-]{36})"/i)?.[1] ||
+      out.match(D1_ID_RE)?.[0]
     if (id) return id
   } catch {
     // 可能同名数据库已存在，回退到列表查找
@@ -47,26 +60,27 @@ function createD1() {
 }
 
 function findKvId() {
-  const match = (list) =>
-    list.find((k) => KV_TITLES.includes(k.title))?.id || ''
   try {
-    return match(parseJsonList(run('npx wrangler kv namespace list --json')))
-  } catch {
-    // 旧版 wrangler 可能不支持 --json，尝试解析表格输出
-    try {
-      const out = run('npx wrangler kv namespace list')
-      const line = out.split('\n').find((l) => KV_TITLES.some((t) => l.includes(t)))
-      return line?.match(/[0-9a-f]{32}/i)?.[0] || ''
-    } catch {
-      return ''
+    const out = run('npx wrangler kv namespace list')
+    const fromJson = parseJsonList(out).find((k) => KV_TITLES.includes(k.title))?.id
+    if (fromJson) return fromJson
+    for (const title of KV_TITLES) {
+      const id = matchIdInTable(out, title, KV_ID_RE)
+      if (id) return id
     }
+    return ''
+  } catch {
+    return ''
   }
 }
 
 function createKv() {
   try {
     const out = run(`npx wrangler kv namespace create ${KV_TITLE}`)
-    const id = out.match(/id\s*=\s*"([0-9a-f]{32})"/i)?.[1]
+    const id =
+      out.match(/"id"\s*:\s*"([0-9a-f]{32})"/i)?.[1] ||
+      out.match(/id\s*=\s*"([0-9a-f]{32})"/i)?.[1] ||
+      out.match(KV_ID_RE)?.[0]
     if (id) return id
   } catch {
     // 同名命名空间已存在，回退到列表查找
