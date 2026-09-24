@@ -1,5 +1,5 @@
 // ============================================================
-// SMTP 邮件发送（隐式 TLS，端口 465）
+// SMTP 邮件发送（465 隐式 TLS / 587 STARTTLS）
 // 通过 cloudflare:sockets 直连，兼容 QQ/163/Gmail 等
 // ============================================================
 
@@ -7,7 +7,7 @@ import { connect } from 'cloudflare:sockets'
 
 function b64Text(s) {
   // UTF-8 -> base64
-  return btoa(String(s).replace(/[\u0080-\uFFFF]/g, (ch) => {
+  return btoa(String(s).replace(/[-￿]/g, (ch) => {
     const c = ch.charCodeAt(0)
     if (c < 0x800) return String.fromCharCode(0xc0 | (c >> 6), 0x80 | (c & 0x3f))
     return String.fromCharCode(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 0x3f), 0x80 | (c & 0x3f))
@@ -25,16 +25,22 @@ export async function sendSMTP(cfg, { title, content }) {
     throw new Error('SMTP 配置不完整（需要 host/username/password/to）')
   }
 
-  const socket = connect({ hostname: host, port, secureTransport: 'on' })
-  const writer = socket.writable.getWriter()
-  const reader = socket.readable.getReader()
+  const useStarttls = port === 587
+  let socket = connect({
+    hostname: host,
+    port,
+    secureTransport: useStarttls ? 'starttls' : 'on'
+  })
+  let writer = socket.writable.getWriter()
+  let reader = socket.readable.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  let stage = '初始化'
 
   async function readResponse(expected) {
     while (true) {
       const { value, done } = await reader.read()
-      if (done) throw new Error('SMTP 连接意外关闭')
+      if (done) throw new Error(`SMTP 连接在「${stage}」阶段被服务器关闭`)
       buffer += decoder.decode(value, { stream: true })
       const lines = buffer.split('\r\n')
       buffer = lines.pop()
@@ -48,7 +54,7 @@ export async function sendSMTP(cfg, { title, content }) {
       if (!finalLine) continue
       const code = parseInt(finalLine.slice(0, 3), 10)
       if (code !== expected) {
-        throw new Error(`SMTP 响应 ${finalLine}（期望 ${expected}）`)
+        throw new Error(`SMTP「${stage}」响应 ${finalLine}（期望 ${expected}）`)
       }
       return finalLine
     }
@@ -58,20 +64,47 @@ export async function sendSMTP(cfg, { title, content }) {
     await writer.write(new TextEncoder().encode(cmd))
   }
 
-  try {
-    await readResponse(220)
+  async function ehlo() {
     await send('EHLO lover\r\n')
     await readResponse(250)
+  }
+
+  try {
+    stage = '等待问候'
+    await readResponse(220)
+    stage = 'EHLO'
+    await ehlo()
+
+    if (useStarttls) {
+      stage = 'STARTTLS'
+      await send('STARTTLS\r\n')
+      await readResponse(220)
+      // 升级 TLS：释放旧流锁，换新 socket 的读写流
+      try { reader.releaseLock() } catch {}
+      try { writer.releaseLock() } catch {}
+      socket = socket.startTls()
+      writer = socket.writable.getWriter()
+      reader = socket.readable.getReader()
+      buffer = ''
+      stage = 'EHLO(TLS)'
+      await ehlo()
+    }
+
+    stage = '认证'
     await send('AUTH LOGIN\r\n')
     await readResponse(334)
     await send(`${b64Text(username)}\r\n`)
     await readResponse(334)
     await send(`${b64Text(password)}\r\n`)
     await readResponse(235)
+
+    stage = '发件人'
     await send(`MAIL FROM:<${from}>\r\n`)
     await readResponse(250)
+    stage = '收件人'
     await send(`RCPT TO:<${to}>\r\n`)
     await readResponse(250)
+    stage = '正文'
     await send('DATA\r\n')
     await readResponse(354)
 
@@ -88,6 +121,7 @@ export async function sendSMTP(cfg, { title, content }) {
       ''
     ].join('\r\n')
     await send(body)
+    stage = '发送确认'
     await readResponse(250)
     await send('QUIT\r\n')
   } finally {

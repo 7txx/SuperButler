@@ -17,7 +17,7 @@ export const CHANNEL_TYPES = {
     desc: '通过 SMTP 发送邮件（465 端口 SSL），QQ/163 邮箱使用授权码作为密码',
     fields: [
       { key: 'host', label: 'SMTP 服务器', required: true, placeholder: '如 smtp.qq.com / smtp.163.com' },
-      { key: 'port', label: '端口', required: false, placeholder: '默认 465' },
+      { key: 'port', label: '端口', required: false, placeholder: '默认 465（如被断开可试 587）' },
       { key: 'username', label: '账号', required: true, placeholder: '发件邮箱完整地址' },
       { key: 'password', label: '密码/授权码', required: true },
       { key: 'from', label: '发件地址（可选）', required: false, placeholder: '默认与账号一致' },
