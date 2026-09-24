@@ -1,0 +1,155 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========== 基础 ========== */
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #0c0a1a;
+  color: #e6e3f5;
+  font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(124, 66, 255, 0.35);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 66, 255, 0.6);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ========== 星空 ========== */
+
+.starfield {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 60% at 70% -10%, rgba(124, 66, 255, 0.25), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 10% 110%, rgba(76, 29, 168, 0.3), transparent 60%),
+    linear-gradient(180deg, #0c0a1a 0%, #100c24 50%, #0c0a1a 100%);
+}
+
+.star {
+  position: absolute;
+  border-radius: 9999px;
+  background: #fff;
+  animation: twinkle var(--dur, 3s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* ========== 组件辅助 ========== */
+
+.glass {
+  background: rgba(28, 24, 54, 0.6);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(124, 66, 255, 0.18);
+}
+
+.nav-card {
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+.nav-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(150, 107, 255, 0.55);
+  box-shadow: 0 10px 32px rgba(124, 66, 255, 0.28);
+}
+
+.cat-item {
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+.cat-item.active {
+  color: #fff;
+  background: linear-gradient(90deg, rgba(124, 66, 255, 0.35), rgba(124, 66, 255, 0.05));
+  box-shadow: inset 3px 0 0 #7c42ff;
+}
+
+/* ========== Element Plus 深色微调 ========== */
+
+html.dark {
+  --el-bg-color: #141128;
+  --el-bg-color-overlay: #1c1836;
+  --el-fill-color-blank: #141128;
+  --el-border-color: rgba(124, 66, 255, 0.2);
+  --el-border-color-light: rgba(124, 66, 255, 0.18);
+  --el-text-color-primary: #e6e3f5;
+  --el-text-color-regular: #c7c2e0;
+  --el-color-primary: #7c42ff;
+}
+
+.el-card {
+  border-color: rgba(124, 66, 255, 0.18) !important;
+}
+
+/* 路由切换淡入 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* ========== 手机适配 ========== */
+
+@media (max-width: 640px) {
+  /* 弹窗固定宽度改为近全屏 */
+  .el-dialog {
+    width: 92% !important;
+    margin-top: 6vh !important;
+  }
+  .el-message-box {
+    width: 86% !important;
+  }
+
+  /* 卡片更紧凑 */
+  .el-card__body {
+    padding: 14px;
+  }
+
+  /* 表格单元格内边距收窄（表格本身可横向滑动） */
+  .el-table .cell {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  /* 抽屉内容自带边距 */
+  .el-drawer__body {
+    padding: 0;
+  }
+}

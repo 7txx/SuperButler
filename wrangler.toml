@@ -1,0 +1,32 @@
+# Worker 名称（决定 workers.dev 子域名前缀），可改成任意喜欢的名字
+name = "superbutler"
+main = "worker/index.js"
+compatibility_date = "2025-09-01"
+
+# 前端构建产物（vite build 输出到 dist），由 Workers Static Assets 托管
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# D1 业务数据库，创建资源后把真实 database_id 填到下方
+# （绑定以 database_id 为准，database_name 仅用于 wrangler d1 命令解析）
+[[d1_databases]]
+binding = "DB"
+database_name = "superbutler"
+database_id = "<YOUR_DATABASE_ID>"
+
+# KV：登录会话 / Logo / 缓存，创建后把真实 id 填到下方
+[[kv_namespaces]]
+binding = "KV"
+id = "<YOUR_KV_NAMESPACE_ID>"
+
+# 定时任务：每 5 分钟触发一次（网站检测每轮执行，订阅检查每轮执行并去重）
+[triggers]
+crons = ["*/5 * * * *"]
+
+# 如需绑定自定义域名，在 Cloudflare 控制台（Worker → Settings → Domains & Routes）
+# 添加，或在本文件加入下面一段后重新部署（请勿提交个人域名到公开仓库）：
+# [[routes]]
+# pattern = "nav.yourdomain.com"
+# custom_domain = true
