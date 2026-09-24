@@ -6,7 +6,7 @@
     </aside>
 
     <!-- 手机端抽屉 -->
-    <el-drawer v-model="drawerOpen" title="Lover" direction="ltr" size="260px">
+    <el-drawer v-model="drawerOpen" title="超级管家" direction="ltr" size="260px">
       <div class="flex h-full flex-col">
         <SidebarContent @logout="logout" @navigate="drawerOpen = false" />
       </div>

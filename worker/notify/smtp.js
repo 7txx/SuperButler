@@ -70,7 +70,7 @@ export async function sendSMTP(cfg, { title, content }) {
     await readResponse(354)
 
     const body = [
-      `From: =?UTF-8?B?${b64Text(cfg.from_name || 'Lover')}?= <${from}>`,
+      `From: =?UTF-8?B?${b64Text(cfg.from_name || 'SuperButler')}?= <${from}>`,
       `To: <${to}>`,
       `Subject: =?UTF-8?B?${b64Text(title)}?=`,
       'MIME-Version: 1.0',

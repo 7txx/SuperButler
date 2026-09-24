@@ -15,7 +15,7 @@ routes.get('/', async (c) => {
     c.env.DB.prepare('SELECT COUNT(*) AS n FROM bookmarks').first()
   ])
   return c.json({
-    name: settings.title || '个人导航',
+    name: settings.title || '超级管家',
     version: APP_VERSION,
     counts: {
       subscriptions: subs.n,

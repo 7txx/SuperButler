@@ -77,7 +77,7 @@ routes.post('/:id/test', async (c) => {
   if (!channel) return c.json({ error: '渠道不存在' }, 404)
   try {
     await dispatchChannel(channel, {
-      title: '【Lover 测试】通知渠道连通正常',
+      title: '【超级管家 测试】通知渠道连通正常',
       content:
         '<h3>测试通知</h3><p>如果您收到这条消息，说明该通知渠道配置正确，订阅到期提醒可以正常送达。</p>'
     })

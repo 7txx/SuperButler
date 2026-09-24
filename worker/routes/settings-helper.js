@@ -1,7 +1,7 @@
 // 站点设置公共读取
 
 export const SETTING_DEFAULTS = {
-  title: '个人导航',
+  title: '超级管家',
   subtitle: '',
   description: '',
   language: 'zh-CN',

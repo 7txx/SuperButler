@@ -4,7 +4,7 @@
       <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-800 shadow-glow">
         <el-icon><Star /></el-icon>
       </div>
-      <span class="text-base font-semibold text-white">Lover</span>
+      <span class="text-base font-semibold text-white">超级管家</span>
     </div>
 
     <el-menu

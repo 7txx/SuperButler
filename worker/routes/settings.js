@@ -17,7 +17,7 @@ routes.put('/', async (c) => {
   for (const k of ['title', 'subtitle', 'description', 'language', 'domain']) {
     if (body[k] !== undefined) patch[k] = String(body[k]).trim()
   }
-  if (!patch.title) patch.title = '个人导航'
+  if (!patch.title) patch.title = '超级管家'
   await saveSettings(c.env.DB, patch)
   return c.json({ ok: true })
 })

@@ -102,7 +102,7 @@ async function exportBackup() {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `lover-backup-${new Date().toISOString().slice(0, 10)}.json`
+  a.download = `superbutler-backup-${new Date().toISOString().slice(0, 10)}.json`
   a.click()
   URL.revokeObjectURL(url)
 }

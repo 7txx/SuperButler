@@ -23,7 +23,7 @@
         </div>
         <h1 class="text-lg font-semibold text-white">{{ isSetup ? '初始化管理员' : '后台登录' }}</h1>
         <p class="mt-1 text-xs text-brand-200/50">
-          {{ isSetup ? '首次使用，请创建管理员账户' : '个人导航 · 订阅提醒 · 网站监控' }}
+          {{ isSetup ? '首次使用，请创建管理员账户' : '超级管家 · 订阅提醒 · 网站监控' }}
         </p>
       </div>
 

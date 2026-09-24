@@ -29,7 +29,7 @@
             <el-icon><Star /></el-icon>
           </div>
           <div class="hidden sm:block">
-            <div class="text-base font-semibold text-white">{{ site.title || '个人导航' }}</div>
+            <div class="text-base font-semibold text-white">{{ site.title || '超级管家' }}</div>
             <div v-if="site.subtitle" class="text-xs text-brand-200/60">{{ site.subtitle }}</div>
           </div>
         </router-link>
@@ -221,7 +221,7 @@ onMounted(async () => {
   ])
   site.value = s
   logoVersion.value = s.logo_version
-  document.title = s.title || '个人导航'
+  document.title = s.title || '超级管家'
   categories.value = nav.categories
   allBookmarks.value = nav.bookmarks
   engines.value = nav.engines
