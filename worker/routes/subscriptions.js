@@ -2,7 +2,7 @@
 
 import { Hono } from 'hono'
 import { solar2lunar } from '../lib/lunar.js'
-import { toDateStr } from '../lib/dateutil.js'
+import { toDateStr, diffDays } from '../lib/dateutil.js'
 import { buildView, computeNext, parseRemindDays } from '../lib/subscription.js'
 
 const routes = new Hono()
@@ -127,11 +127,16 @@ routes.patch('/:id', async (c) => {
 })
 
 // 手动续期：推算到今天之后的下一个到期日
+// 限制：最多提前 3 天续期，防止误点击
 routes.post('/:id/renew', async (c) => {
   const id = Number(c.req.param('id'))
   const sub = await c.env.DB.prepare('SELECT * FROM subscriptions WHERE id = ?').bind(id).first()
   if (!sub) return c.json({ error: '订阅不存在' }, 404)
   const today = toDateStr()
+  const daysLeft = diffDays(today, sub.target_date)
+  if (daysLeft > 3) {
+    return c.json({ error: `还有 ${daysLeft} 天到期，最多提前 3 天续期` }, 400)
+  }
   let target = computeNext(sub)
   while (target <= today) {
     target = computeNext(sub, target)

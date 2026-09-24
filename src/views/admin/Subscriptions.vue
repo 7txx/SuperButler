@@ -64,7 +64,7 @@
             active-text="启"
             inactive-text="停"
           />
-          <el-button link type="primary" size="small" @click="renew(row)">续期</el-button>
+          <el-button link type="primary" size="small" :disabled="row.days_left > 3" @click="renew(row)">续期</el-button>
           <el-button link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
           <el-button link type="danger" size="small" @click="remove(row)">删除</el-button>
         </template>
