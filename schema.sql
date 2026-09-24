@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   last_renew_at  TEXT,
   notified_keys  TEXT NOT NULL DEFAULT '',       -- 当前到期周期内已推送过的提前天数，避免重复
   channel_ids    TEXT NOT NULL DEFAULT '',       -- 绑定渠道，空串=所有已启用渠道
+  renew_link     TEXT NOT NULL DEFAULT '',       -- 订阅续费链接
   sort_order     INTEGER NOT NULL DEFAULT 0,
   created_at     INTEGER NOT NULL
 );

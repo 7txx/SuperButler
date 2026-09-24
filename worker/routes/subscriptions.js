@@ -31,9 +31,7 @@ function normalizeBody(body) {
   return {
     name: String(body.name || '').trim(),
     remark: String(body.remark || '').trim(),
-    tags: String(body.tags || '').trim(),
-    amount: Number(body.amount) || 0,
-    currency: String(body.currency || 'CNY').trim() || 'CNY',
+    renew_link: String(body.renew_link || '').trim().slice(0, 500),
     type: 'cycle',
     is_lunar: body.is_lunar ? 1 : 0,
     target_date: String(body.target_date || '').slice(0, 10),
@@ -68,13 +66,13 @@ routes.post('/', async (c) => {
   }
   const result = await c.env.DB.prepare(
     `INSERT INTO subscriptions
-      (name, remark, tags, amount, currency, type, is_lunar, target_date,
+      (name, remark, renew_link, type, is_lunar, target_date,
        period_value, period_unit, lunar_month, lunar_day, remind_days,
        remind_time, renew_offset_days, enabled, auto_renew, channel_ids, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   )
     .bind(
-      d.name, d.remark, d.tags, d.amount, d.currency, d.type, d.is_lunar, d.target_date,
+      d.name, d.remark, d.renew_link, d.type, d.is_lunar, d.target_date,
       d.period_value, d.period_unit, lunarMonth, lunarDay, d.remind_days,
       d.remind_time, d.renew_offset_days, d.enabled, d.auto_renew, d.channel_ids, now
     )
@@ -102,13 +100,13 @@ routes.put('/:id', async (c) => {
   }
   await c.env.DB.prepare(
     `UPDATE subscriptions SET
-       name=?, remark=?, tags=?, amount=?, currency=?, type=?, is_lunar=?, target_date=?,
+       name=?, remark=?, renew_link=?, type=?, is_lunar=?, target_date=?,
        period_value=?, period_unit=?, lunar_month=?, lunar_day=?, remind_days=?,
        remind_time=?, renew_offset_days=?, enabled=?, auto_renew=?, channel_ids=?, notified_keys=''
      WHERE id=?`
   )
     .bind(
-      d.name, d.remark, d.tags, d.amount, d.currency, d.type, d.is_lunar, d.target_date,
+      d.name, d.remark, d.renew_link, d.type, d.is_lunar, d.target_date,
       d.period_value, d.period_unit, lunarMonth, lunarDay, d.remind_days,
       d.remind_time, d.renew_offset_days, d.enabled, d.auto_renew, d.channel_ids, id
     )

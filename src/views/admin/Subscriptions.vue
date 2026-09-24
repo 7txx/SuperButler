@@ -1,7 +1,7 @@
 <template>
   <el-card>
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <el-input v-model="q" placeholder="搜索名称 / 备注 / 标签" clearable class="w-full sm:w-64" :prefix-icon="Search" @input="load" />
+      <el-input v-model="q" placeholder="搜索名称 / 备注" clearable class="w-full sm:w-64" :prefix-icon="Search" @input="load" />
       <el-button type="primary" :icon="Plus" @click="openCreate">增加订阅</el-button>
     </div>
 
@@ -130,23 +130,15 @@
             <template v-else>不自动续期，到期后每天提醒，直到你手动点击续期</template>
           </p>
         </el-form-item>
+        <el-form-item label="订阅链接">
+          <el-input v-model="form.renew_link" placeholder="https://example.com/renew" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="form.remark" type="textarea" :rows="2" />
+        </el-form-item>
         <el-form-item label="启用">
           <el-switch v-model="form.enabled" />
         </el-form-item>
-        <el-collapse class="w-full">
-          <el-collapse-item title="更多信息（标签 / 金额 / 备注）" name="more">
-            <el-form-item label="标签">
-              <el-input v-model="form.tags" placeholder="多个标签用逗号分隔" />
-            </el-form-item>
-            <el-form-item label="账单金额">
-              <el-input-number v-model="form.amount" :min="0" :precision="2" />
-              <el-input v-model="form.currency" class="ml-2 w-20" />
-            </el-form-item>
-            <el-form-item label="备注">
-              <el-input v-model="form.remark" type="textarea" :rows="2" />
-            </el-form-item>
-          </el-collapse-item>
-        </el-collapse>
       </el-form>
       <template #footer>
         <el-button @click="dialog = false">取消</el-button>
@@ -182,9 +174,7 @@ const emptyForm = () => ({
   channel_ids: [],
   auto_renew: true,
   enabled: true,
-  tags: '',
-  amount: 0,
-  currency: 'CNY',
+  renew_link: '',
   remark: ''
 })
 const form = ref(emptyForm())

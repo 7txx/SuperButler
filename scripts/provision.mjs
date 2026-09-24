@@ -119,6 +119,7 @@ execSync(`npx wrangler d1 execute ${DB_NAME} --remote --file=./schema.sql`, {
 const migrations = [
   `ALTER TABLE subscriptions ADD COLUMN remind_time TEXT NOT NULL DEFAULT '08:00'`,
   `ALTER TABLE subscriptions ADD COLUMN renew_offset_days INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE subscriptions ADD COLUMN renew_link TEXT NOT NULL DEFAULT ''`,
   `UPDATE subscriptions SET type='cycle' WHERE type<>'cycle'`
 ]
 for (const sql of migrations) {
