@@ -45,8 +45,6 @@
         >
           <el-input
             v-model="form.config[f.key]"
-            :type="f.secret ? 'password' : 'text'"
-            show-password
             :placeholder="f.placeholder || ''"
           />
         </el-form-item>
@@ -84,7 +82,8 @@ function typeLabel(t) {
 }
 
 function onTypeChange() {
-  form.value.config = {}
+  // SMTP 渠道默认填 QQ 邮箱服务器，减少输入
+  form.value.config = form.value.type === 'smtp' ? { host: 'smtp.qq.com' } : {}
 }
 
 async function load() {

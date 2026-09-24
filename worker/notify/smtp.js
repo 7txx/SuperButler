@@ -38,13 +38,19 @@ export async function sendSMTP(cfg, { title, content }) {
       buffer += decoder.decode(value, { stream: true })
       const lines = buffer.split('\r\n')
       buffer = lines.pop()
+      // SMTP 多行回复：NNN- 为续行，NNN␣ 为结束行；必须读到结束行才算完整，
+      // 否则残留的续行会污染下一条命令的响应解析
+      let finalLine = ''
       for (const line of lines) {
-        if (/^\d{3}[ -]/.test(line)) {
-          const code = parseInt(line.slice(0, 3), 10)
-          if (code !== expected) throw new Error(`SMTP 响应 ${line}（期望 ${expected}）`)
-          return line
-        }
+        const m = line.match(/^(\d{3})([ -])/)
+        if (m && m[2] === ' ') finalLine = line
       }
+      if (!finalLine) continue
+      const code = parseInt(finalLine.slice(0, 3), 10)
+      if (code !== expected) {
+        throw new Error(`SMTP 响应 ${finalLine}（期望 ${expected}）`)
+      }
+      return finalLine
     }
   }
 

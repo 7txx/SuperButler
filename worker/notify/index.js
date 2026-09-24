@@ -8,7 +8,7 @@ export const CHANNEL_TYPES = {
     label: 'PushPlus',
     desc: '微信推送，pushplus.plus 注册获取 token',
     fields: [
-      { key: 'token', label: 'Token', required: true, secret: true, placeholder: 'PushPlus 平台 token' },
+      { key: 'token', label: 'Token', required: true, placeholder: 'PushPlus 平台 token' },
       { key: 'topic', label: '群组编码（可选）', required: false }
     ]
   },
@@ -19,7 +19,7 @@ export const CHANNEL_TYPES = {
       { key: 'host', label: 'SMTP 服务器', required: true, placeholder: '如 smtp.qq.com / smtp.163.com' },
       { key: 'port', label: '端口', required: false, placeholder: '默认 465' },
       { key: 'username', label: '账号', required: true, placeholder: '发件邮箱完整地址' },
-      { key: 'password', label: '密码/授权码', required: true, secret: true },
+      { key: 'password', label: '密码/授权码', required: true },
       { key: 'from', label: '发件地址（可选）', required: false, placeholder: '默认与账号一致' },
       { key: 'from_name', label: '发件人名称（可选）', required: false },
       { key: 'to', label: '收件地址', required: true, placeholder: '接收提醒的邮箱' }
