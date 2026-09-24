@@ -16,9 +16,19 @@ function run(cmd) {
   return execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
 }
 
+// wrangler 可能输出警告等非 JSON 内容，截取第一个 [ 开始的部分再解析
+function parseJsonList(out) {
+  const i = out.indexOf('[')
+  if (i === -1) return []
+  return JSON.parse(out.slice(i))
+}
+
+// 可接受的 KV 命名空间标题（含一键部署向导可能使用的名称）
+const KV_TITLES = [KV_TITLE, `${DB_NAME}-${KV_TITLE}`, DB_NAME]
+
 function findD1Id() {
   try {
-    const list = JSON.parse(run('npx wrangler d1 list --json'))
+    const list = parseJsonList(run('npx wrangler d1 list --json'))
     return list.find((d) => d.name === DB_NAME)?.uuid || ''
   } catch {
     return ''
@@ -26,21 +36,26 @@ function findD1Id() {
 }
 
 function createD1() {
-  const out = run(`npx wrangler d1 create ${DB_NAME}`)
-  return out.match(/database_id\s*=\s*"([0-9a-f-]{36})"/i)?.[1] || ''
+  try {
+    const out = run(`npx wrangler d1 create ${DB_NAME}`)
+    const id = out.match(/database_id\s*=\s*"([0-9a-f-]{36})"/i)?.[1]
+    if (id) return id
+  } catch {
+    // 可能同名数据库已存在，回退到列表查找
+  }
+  return findD1Id()
 }
 
 function findKvId() {
+  const match = (list) =>
+    list.find((k) => KV_TITLES.includes(k.title))?.id || ''
   try {
-    const out = run('npx wrangler kv namespace list --json')
-    const list = JSON.parse(out)
-    const hit = list.find((k) => k.title === KV_TITLE || k.title === `${DB_NAME}-${KV_TITLE}`)
-    return hit?.id || ''
+    return match(parseJsonList(run('npx wrangler kv namespace list --json')))
   } catch {
     // 旧版 wrangler 可能不支持 --json，尝试解析表格输出
     try {
       const out = run('npx wrangler kv namespace list')
-      const line = out.split('\n').find((l) => l.includes(KV_TITLE))
+      const line = out.split('\n').find((l) => KV_TITLES.some((t) => l.includes(t)))
       return line?.match(/[0-9a-f]{32}/i)?.[0] || ''
     } catch {
       return ''
@@ -49,8 +64,14 @@ function findKvId() {
 }
 
 function createKv() {
-  const out = run(`npx wrangler kv namespace create ${KV_TITLE}`)
-  return out.match(/id\s*=\s*"([0-9a-f]{32})"/i)?.[1] || ''
+  try {
+    const out = run(`npx wrangler kv namespace create ${KV_TITLE}`)
+    const id = out.match(/id\s*=\s*"([0-9a-f]{32})"/i)?.[1]
+    if (id) return id
+  } catch {
+    // 同名命名空间已存在，回退到列表查找
+  }
+  return findKvId()
 }
 
 // 1. D1
