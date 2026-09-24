@@ -28,9 +28,6 @@
 
     <el-dialog v-model="dialog" :title="form.id ? '编辑渠道' : '添加渠道'" width="540px">
       <el-form :model="form" label-width="110px">
-        <el-form-item label="渠道名称" required>
-          <el-input v-model="form.name" placeholder="如：我的微信 / QQ邮箱" />
-        </el-form-item>
         <el-form-item label="渠道类型" required>
           <el-radio-group v-model="form.type" :disabled="!!form.id" @change="onTypeChange">
             <el-radio-button v-for="(t, key) in types" :key="key" :value="key">{{ t.label }}</el-radio-button>
@@ -71,7 +68,7 @@ const types = ref({})
 const loading = ref(false)
 const dialog = ref(false)
 
-const emptyForm = () => ({ id: null, name: '', type: 'pushplus', config: {}, enabled: true })
+const emptyForm = () => ({ id: null, name: '超级管家', type: 'pushplus', config: {}, enabled: true })
 const form = ref(emptyForm())
 
 const currentType = computed(() => types.value[form.value.type])
@@ -111,7 +108,7 @@ async function openEdit(row) {
 
 async function save() {
   const f = form.value
-  if (!f.name) return ElMessage.warning('请填写渠道名称')
+  if (!f.name) f.name = '超级管家'
   for (const field of currentFields.value) {
     if (field.required && !f.config[field.key]) {
       return ElMessage.warning(`请填写「${field.label}」`)
