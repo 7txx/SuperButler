@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS search_engines (
   is_internal  INTEGER NOT NULL DEFAULT 0
 );
 
--- 通知渠道（type: pushplus | smtp，config 为 JSON）
+-- 通知渠道（type: pushplus | resend，config 为 JSON）
 CREATE TABLE IF NOT EXISTS channels (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   name       TEXT NOT NULL,

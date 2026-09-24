@@ -82,8 +82,7 @@ function typeLabel(t) {
 }
 
 function onTypeChange() {
-  // SMTP 渠道默认填 QQ 邮箱服务器，减少输入
-  form.value.config = form.value.type === 'smtp' ? { host: 'smtp.qq.com' } : {}
+  form.value.config = {}
 }
 
 async function load() {
