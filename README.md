@@ -68,59 +68,13 @@ npx wrangler login
 
 执行后会自动打开浏览器，点击 **Allow** 授权即可。
 
-### 3. 创建 D1 数据库
-
-```bash
-npx wrangler d1 create superbutler
-```
-
-执行成功后会输出类似下面的内容，**复制其中的 `database_id`**：
-
-```toml
-[[d1_databases]]
-binding = "DB"
-database_name = "superbutler"
-database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"   # ← 复制这个
-```
-
-### 4. 创建 KV 命名空间
-
-```bash
-npx wrangler kv namespace create KV
-```
-
-输出里会包含一个 **`id`**：
-
-```toml
-[[kv_namespaces]]
-binding = "KV"
-id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"   # ← 复制这个
-```
-
-### 5. 修改 wrangler.toml
-
-打开项目根目录的 [wrangler.toml](wrangler.toml)，把上两步复制的 ID 填进去：
-
-```toml
-[[d1_databases]]
-binding = "DB"
-database_name = "superbutler"
-database_id = "第 3 步得到的 database_id"
-
-[[kv_namespaces]]
-binding = "KV"
-id = "第 4 步得到的 id"
-```
-
-其余内容（`name`、`[assets]`、`[triggers]`）保持默认即可。
-
-### 6. 部署上线（自动初始化数据库）
+### 3. 部署上线（全自动）
 
 ```bash
 npm run deploy
 ```
 
-部署过程会先把表结构和默认数据写入远程 D1（`schema.sql` 可重复执行，不会覆盖已有数据），再发布 Worker。
+构建时会**自动完成**：检测并创建 D1 数据库与 KV 命名空间（已存在则复用）→ 把资源 ID 写入 `wrangler.toml` → 初始化数据库表与默认数据（`schema.sql` 可重复执行，不会覆盖已有数据）→ 发布 Worker。
 
 部署成功后，终端会输出你的访问地址，形如：
 
@@ -128,11 +82,31 @@ npm run deploy
 https://superbutler.<你的子域名>.workers.dev
 ```
 
-### 7. 创建管理员账号
+### 4. 创建管理员账号
 
 用浏览器打开上面的地址。因为是首次使用、还没有管理员，页面会显示 **初始化** 表单，填写用户名和密码（至少 6 位）提交即可，之后会自动登录进入后台。
 
 至此部署完成，开始使用吧。
+
+---
+
+## GitHub Actions 自动部署（可选）
+
+适合希望自己掌控资源、push 即部署的用户：
+
+1. Cloudflare 控制台创建 API Token：**My Profile → API Tokens → Create Token**，使用 "Edit Cloudflare Workers" 模板，并额外授予 **D1** 和 **Workers KV Storage** 的编辑权限
+2. 在你的仓库 **Settings → Secrets and variables → Actions** 中添加：
+
+   | 类型 | 名称 | 说明 |
+   |---|---|---|
+   | Secret | `CLOUDFLARE_API_TOKEN` | 上一步创建的 Token（必填） |
+   | Variable | `ACCOUNT_ID` | Cloudflare 账号 ID（仪表盘右侧可复制，必填） |
+   | Variable | `DATABASE_ID` | 自建 D1 的 ID（可选，不填则自动创建） |
+   | Variable | `KV_NAMESPACE_ID` | 自建 KV 的 ID（可选，不填则自动创建） |
+
+3. 向 `main` 分支 push 代码即自动构建部署
+
+> 未配置 `CLOUDFLARE_API_TOKEN` 的仓库（如一键部署 fork 出来的），该工作流会自动跳过，不会产生失败记录。
 
 ---
 

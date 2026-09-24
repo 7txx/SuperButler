@@ -7,9 +7,9 @@
   "scripts": {
     "dev": "vite",
     "dev:worker": "wrangler dev",
-    "build": "vite build",
+    "build": "vite build && node scripts/provision.mjs",
     "preview": "vite preview",
-    "deploy": "npm run build && npm run db:remote && wrangler deploy",
+    "deploy": "npm run build && wrangler deploy",
     "db:local": "wrangler d1 execute superbutler --local --file=./schema.sql",
     "db:remote": "wrangler d1 execute superbutler --remote --file=./schema.sql",
     "cf:init": "npm run db:local && npm run db:remote"

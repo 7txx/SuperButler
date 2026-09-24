@@ -1,0 +1,50 @@
+name: Deploy to Cloudflare
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 仅当仓库配置了 CLOUDFLARE_API_TOKEN secret 时才真正部署，否则自动跳过
+# 这样通过 Deploy 按钮 fork 的用户不会看到失败的工作流
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检查是否配置了部署密钥
+        id: check
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::未配置 CLOUDFLARE_API_TOKEN secret，跳过 GitHub Actions 部署（README 查看配置方法）"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.skip != 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.skip != 'true'
+        with:
+          node-version: 22
+
+      - name: 安装依赖
+        if: steps.check.outputs.skip != 'true'
+        run: npm ci
+
+      - name: 注入资源 ID（如在仓库 Variables 中配置了的话）
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          if [ -n "${{ vars.DATABASE_ID }}" ]; then
+            sed -i "s|<YOUR_DATABASE_ID>|${{ vars.DATABASE_ID }}|" wrangler.toml
+          fi
+          if [ -n "${{ vars.KV_NAMESPACE_ID }}" ]; then
+            sed -i "s|<YOUR_KV_NAMESPACE_ID>|${{ vars.KV_NAMESPACE_ID }}|" wrangler.toml
+          fi
+
+      # 未配置 Variables 时，build 中的 provision 脚本会按名称自动创建/复用 D1 与 KV
+      - name: 构建并部署
+        if: steps.check.outputs.skip != 'true'
+        run: npm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.ACCOUNT_ID }}
