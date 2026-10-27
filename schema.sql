@@ -178,6 +178,9 @@ CREATE TABLE IF NOT EXISTS server_metrics (
 
 CREATE INDEX IF NOT EXISTS idx_server_metrics_server_ts ON server_metrics(server_id, ts);
 
+-- 供按时间清理历史指标使用
+CREATE INDEX IF NOT EXISTS idx_server_metrics_ts ON server_metrics(ts);
+
 -- ============================================================
 -- 默认数据（仅首次初始化时写入）
 -- ============================================================

@@ -8,6 +8,7 @@ const OFFLINE_SECONDS = 180 // 3 个上报周期未上报视为离线
 const METRIC_FRESH_SECONDS = 600 // 超过 10 分钟的指标不参与资源告警
 const EXPIRY_DAYS = 7
 const EXPIRY_GRACE_DAYS = 3
+const METRIC_RETENTION_DAYS = 30 // 指标历史保留天数
 
 function esc(v) {
   return String(v ?? '')
@@ -102,13 +103,31 @@ function alertConfig(server) {
 }
 
 /**
+ * 清理过期指标（默认保留 30 天），每天最多执行一次
+ */
+async function cleanupOldMetrics(env, today) {
+  const flagKey = 'server:metrics_cleanup_date'
+  try {
+    const last = await env.KV.get(flagKey)
+    if (last === today) return 0
+    const cutoff = Math.floor(Date.now() / 1000) - METRIC_RETENTION_DAYS * 86400
+    const res = await env.DB.prepare('DELETE FROM server_metrics WHERE ts < ?').bind(cutoff).run()
+    await env.KV.put(flagKey, today)
+    return res.meta?.changes || 0
+  } catch {
+    return 0
+  }
+}
+
+/**
  * 检查全部服务器：更新在线状态，按状态变化推送离线/恢复、资源阈值、到期提醒
  */
 export async function runServerChecks(env) {
   const now = Math.floor(Date.now() / 1000)
   const today = toDateStr()
+  const metricsRemoved = await cleanupOldMetrics(env, today)
   const { results } = await env.DB.prepare('SELECT * FROM servers').all()
-  const summary = { checked: results.length, online: 0, offline: 0, alerts: 0 }
+  const summary = { checked: results.length, online: 0, offline: 0, alerts: 0, metricsRemoved }
 
   for (const server of results) {
     const hasReported = server.last_seen != null
