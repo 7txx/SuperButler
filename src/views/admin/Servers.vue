@@ -59,10 +59,24 @@
     <div class="mt-5 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
       <div class="mb-3 flex items-center justify-between">
         <div class="text-sm font-medium text-white">服务器节点</div>
-        <div class="text-xs text-brand-200/40">当前 {{ list.length }} 个</div>
+        <div class="flex items-center gap-3">
+          <div class="text-xs text-brand-200/40">当前 {{ list.length }} 个</div>
+          <el-radio-group v-model="view" size="small">
+            <el-radio-button value="grid" title="卡片视图">
+              <el-icon><Grid /></el-icon>
+            </el-radio-button>
+            <el-radio-button value="list" title="列表视图">
+              <el-icon><List /></el-icon>
+            </el-radio-button>
+          </el-radio-group>
+        </div>
       </div>
 
-      <div v-loading="loading" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div
+        v-if="view === 'grid'"
+        v-loading="loading"
+        class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+      >
         <div
           v-for="row in list"
           :key="row.id"
@@ -144,7 +158,102 @@
         </div>
       </div>
 
-      <div v-if="!loading && !list.length" class="py-12 text-center text-sm text-brand-200/40">
+      <!-- 列表视图 -->
+      <el-table
+        v-else
+        v-loading="loading"
+        :data="list"
+        row-key="id"
+        size="small"
+        empty-text="暂无服务器"
+        class="server-table"
+      >
+        <el-table-column label="服务器" min-width="200">
+          <template #default="{ row }">
+            <div class="flex items-center gap-2">
+              <span class="text-lg leading-none">{{ flagText(row) }}</span>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span class="truncate text-white">{{ row.name }}</span>
+                  <span
+                    v-if="row.hidden"
+                    class="shrink-0 rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] text-brand-200/50"
+                  >
+                    隐藏
+                  </span>
+                </div>
+                <div class="truncate text-[11px] text-brand-200/40">{{ row.region || '—' }}</div>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="状态" width="88">
+          <template #default="{ row }">
+            <span
+              class="rounded-full px-2 py-0.5 text-[11px] font-medium"
+              :class="row.online ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/10 text-brand-200/50'"
+            >
+              {{ row.online ? '在线' : '离线' }}
+            </span>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="IP 地址" min-width="160">
+          <template #default="{ row }">
+            <div class="flex items-center gap-1.5">
+              <span class="truncate">{{ row.ip || '—' }}</span>
+              <button
+                v-if="row.ip"
+                class="shrink-0 text-brand-200/40 transition hover:text-brand-300"
+                title="复制 IP"
+                @click="copy(row.ip)"
+              >
+                <el-icon class="text-xs"><CopyDocument /></el-icon>
+              </button>
+            </div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="Agent" width="90">
+          <template #default="{ row }">{{ row.agent_version || '—' }}</template>
+        </el-table-column>
+
+        <el-table-column label="系统" min-width="190">
+          <template #default="{ row }">{{ systemText(row) }}</template>
+        </el-table-column>
+
+        <el-table-column label="分组" width="110">
+          <template #default="{ row }">{{ row.group_name || '—' }}</template>
+        </el-table-column>
+
+        <el-table-column label="账单" width="100">
+          <template #default="{ row }">{{ row.bill || '—' }}</template>
+        </el-table-column>
+
+        <el-table-column label="最后上报" width="150">
+          <template #default="{ row }">{{ lastSeenText(row) }}</template>
+        </el-table-column>
+
+        <el-table-column label="操作" width="130" fixed="right">
+          <template #default="{ row }">
+            <el-button link size="small" title="编辑" @click="openEdit(row)">
+              <el-icon><EditPen /></el-icon>
+            </el-button>
+            <el-button link size="small" title="复制" @click="duplicate(row)">
+              <el-icon><CopyDocument /></el-icon>
+            </el-button>
+            <el-button link size="small" title="安装命令" @click="openInstall(row)">
+              <el-icon><Monitor /></el-icon>
+            </el-button>
+            <el-button link size="small" type="danger" title="删除" @click="remove(row)">
+              <el-icon><Delete /></el-icon>
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div v-if="view === 'grid' && !loading && !list.length" class="py-12 text-center text-sm text-brand-200/40">
         暂无服务器
       </div>
     </div>
@@ -255,9 +364,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, EditPen, CopyDocument, Delete, Monitor } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, EditPen, CopyDocument, Delete, Monitor, Grid, List } from '@element-plus/icons-vue'
 import { api } from '../../api.js'
 
 const rawList = ref([])
@@ -267,6 +376,7 @@ const filter = ref('')
 const group = ref('')
 const sortKey = ref('name')
 const sortOrder = ref('asc')
+const view = ref(localStorage.getItem('sb:servers-view') === 'list' ? 'list' : 'grid')
 const loading = ref(false)
 const checking = ref(false)
 const dialog = ref(false)
@@ -327,6 +437,8 @@ const emptyForm = () => ({
   threshold_disk: 90
 })
 const form = ref(emptyForm())
+
+watch(view, (v) => localStorage.setItem('sb:servers-view', v))
 
 function systemText(row) {
   return [row.os, row.arch].filter(Boolean).join(' / ') || '—'
