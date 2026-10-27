@@ -39,6 +39,7 @@ const emit = defineEmits(['navigate', 'logout'])
 // 图标均为全局注册的 Element Plus 图标组件
 const navItems = [
   { path: '/admin/overview', icon: 'DataAnalysis', label: '概览' },
+  { path: '/admin/servers', icon: 'Cpu', label: '服务器' },
   { path: '/admin/subscriptions', icon: 'Bell', label: '订阅提醒' },
   { path: '/admin/monitors', icon: 'Monitor', label: '网站监控' },
   { path: '/admin/nav', icon: 'Collection', label: '导航管理' },

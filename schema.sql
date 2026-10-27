@@ -120,6 +120,64 @@ CREATE TABLE IF NOT EXISTS monitors (
   created_at       INTEGER NOT NULL
 );
 
+-- 服务器监控（服务器探针）
+CREATE TABLE IF NOT EXISTS servers (
+  id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+  name               TEXT NOT NULL,
+  flag               TEXT NOT NULL DEFAULT '',      -- 国家代码（如 HK）或国旗 emoji
+  region             TEXT NOT NULL DEFAULT '',      -- 地区描述，如 Hong Kong, HK
+  ip                 TEXT NOT NULL DEFAULT '',
+  group_name         TEXT NOT NULL DEFAULT '',
+  agent_token        TEXT NOT NULL,
+  agent_version      TEXT NOT NULL DEFAULT '',
+  os                 TEXT NOT NULL DEFAULT '',
+  arch               TEXT NOT NULL DEFAULT '',
+  status             TEXT NOT NULL DEFAULT 'offline', -- online | offline
+  last_seen          INTEGER,                       -- 最后上报时间（unix 秒）
+  uptime_seconds     INTEGER,
+  traffic_reset_day  INTEGER NOT NULL DEFAULT 1,    -- 月流量重置日
+  expire_date        TEXT NOT NULL DEFAULT '',      -- 到期日 YYYY-MM-DD
+  bill               TEXT NOT NULL DEFAULT '',      -- 账单描述，自由文本
+  hidden             INTEGER NOT NULL DEFAULT 0,
+  sort_order         INTEGER NOT NULL DEFAULT 0,
+  alert_enabled      INTEGER NOT NULL DEFAULT 1,
+  channel_ids        TEXT NOT NULL DEFAULT '',      -- 绑定渠道，空串=所有已启用渠道
+  alert_config       TEXT NOT NULL DEFAULT '{}',    -- 阈值 JSON：cpu/mem/disk
+  alert_state        TEXT NOT NULL DEFAULT '',      -- 已触发的告警，逗号分隔
+  expire_notice_date TEXT NOT NULL DEFAULT '',      -- 最近一次到期提醒日期
+  created_at         INTEGER NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_servers_token ON servers(agent_token);
+
+-- 服务器指标历史（Agent 每次上报一行）
+CREATE TABLE IF NOT EXISTS server_metrics (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  server_id      INTEGER NOT NULL,
+  ts             INTEGER NOT NULL,
+  cpu            REAL,
+  mem_used       INTEGER,
+  mem_total      INTEGER,
+  swap_used      INTEGER,
+  swap_total     INTEGER,
+  disk_used      INTEGER,
+  disk_total     INTEGER,
+  load1          REAL,
+  load5          REAL,
+  load15         REAL,
+  net_rx         INTEGER,
+  net_tx         INTEGER,
+  traffic_up     INTEGER,
+  traffic_down   INTEGER,
+  temp           REAL,
+  processes      INTEGER,
+  tcp_conn       INTEGER,
+  udp_conn       INTEGER,
+  uptime_seconds INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_server_metrics_server_ts ON server_metrics(server_id, ts);
+
 -- ============================================================
 -- 默认数据（仅首次初始化时写入）
 -- ============================================================

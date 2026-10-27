@@ -1,0 +1,2 @@
+# Agent 脚本必须保持 LF，否则通过 curl | sh 执行时会因 CRLF 报错
+public/agent/*.sh text eol=lf

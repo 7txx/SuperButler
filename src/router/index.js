@@ -9,6 +9,7 @@ const routes = [
     redirect: '/admin/overview',
     children: [
       { path: 'overview', name: 'overview', component: () => import('../views/admin/Overview.vue'), meta: { title: '概览' } },
+      { path: 'servers', name: 'servers', component: () => import('../views/admin/Servers.vue'), meta: { title: '服务器' } },
       { path: 'subscriptions', name: 'subscriptions', component: () => import('../views/admin/Subscriptions.vue'), meta: { title: '订阅提醒' } },
       { path: 'monitors', name: 'monitors', component: () => import('../views/admin/Monitors.vue'), meta: { title: '网站监控' } },
       { path: 'nav', name: 'nav', component: () => import('../views/admin/NavManage.vue'), meta: { title: '导航管理' } },

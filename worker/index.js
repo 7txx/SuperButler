@@ -8,14 +8,16 @@ import { requireAdmin } from './lib/auth.js'
 
 import authRoutes from './routes/auth.js'
 import publicRoutes from './routes/public.js'
+import agentRoutes from './routes/agent.js'
 import overviewRoutes from './routes/overview.js'
 import subsRoutes from './routes/subscriptions.js'
 import monitorsRoutes from './routes/monitors.js'
+import serversRoutes from './routes/servers.js'
 import navRoutes from './routes/nav.js'
 import channelsRoutes from './routes/channels.js'
 import settingsRoutes from './routes/settings.js'
 import accountRoutes from './routes/account.js'
-import { runMonitors, runSubscriptions } from './jobs/cron.js'
+import { runMonitors, runSubscriptions, runServerChecks } from './jobs/cron.js'
 import cronJob from './jobs/cron.js'
 
 const app = new Hono()
@@ -29,6 +31,7 @@ app.onError((err, c) => {
 
 app.route('/api/auth', authRoutes)
 app.route('/api/public', publicRoutes)
+app.route('/api/agent', agentRoutes)
 
 // Logo（存于 KV，公开访问）
 app.get('/api/public/logo', async (c) => {
@@ -47,6 +50,7 @@ admin.use('*', requireAdmin)
 admin.route('/overview', overviewRoutes)
 admin.route('/subscriptions', subsRoutes)
 admin.route('/monitors', monitorsRoutes)
+admin.route('/servers', serversRoutes)
 admin.route('/nav', navRoutes)
 admin.route('/channels', channelsRoutes)
 admin.route('/settings', settingsRoutes)
@@ -54,8 +58,12 @@ admin.route('/account', accountRoutes)
 
 // 手动触发定时任务（调试用）
 admin.post('/system/run-cron', async (c) => {
-  const [monitors, subs] = await Promise.all([runMonitors(c.env), runSubscriptions(c.env)])
-  return c.json({ ok: true, monitors, subs })
+  const [monitors, subs, servers] = await Promise.all([
+    runMonitors(c.env),
+    runSubscriptions(c.env),
+    runServerChecks(c.env)
+  ])
+  return c.json({ ok: true, monitors, subs, servers })
 })
 
 app.route('/api/admin', admin)

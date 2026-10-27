@@ -7,6 +7,9 @@ import { lunarText } from '../lib/lunar.js'
 import { checkMonitor } from '../lib/monitor.js'
 import { computeNext, remindThreshold } from '../lib/subscription.js'
 import { dispatchChannel } from '../notify/index.js'
+import { runServerChecks } from '../lib/server-check.js'
+
+export { runServerChecks } from '../lib/server-check.js'
 
 // ---------------- 网站监控 ----------------
 
@@ -175,8 +178,12 @@ export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
       (async () => {
-        const [monitors, subs] = await Promise.all([runMonitors(env), runSubscriptions(env)])
-        console.log('cron done', JSON.stringify({ monitors, subs }))
+        const [monitors, subs, servers] = await Promise.all([
+          runMonitors(env),
+          runSubscriptions(env),
+          runServerChecks(env)
+        ])
+        console.log('cron done', JSON.stringify({ monitors, subs, servers }))
       })()
     )
   }
