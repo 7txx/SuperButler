@@ -111,8 +111,10 @@ export async function runServerChecks(env) {
 
     if (!server.alert_enabled) continue
 
-    const states = new Set(String(server.alert_state || '').split(',').filter(Boolean))
-    let changed = false
+    // 现在只记录离线状态，历史遗留的 cpu/mem/disk 标记顺手清掉
+    const stored = String(server.alert_state || '').split(',').filter(Boolean)
+    const states = new Set(stored.filter((s) => s === 'offline'))
+    let changed = stored.length !== states.size
     let sent = 0
 
     // 1) 离线 / 恢复
