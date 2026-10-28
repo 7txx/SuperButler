@@ -11,33 +11,17 @@ function newToken() {
   return crypto.randomUUID().replace(/-/g, '')
 }
 
-function clampNum(v, def) {
-  const n = Math.round(Number(v))
-  if (!Number.isFinite(n)) return def
-  return Math.min(100, Math.max(1, n))
-}
-
 function parseRow(row) {
   const now = Math.floor(Date.now() / 1000)
-  let cfg = {}
-  try {
-    cfg = JSON.parse(row.alert_config || '{}')
-  } catch {}
   return {
     ...row,
     hidden: !!row.hidden,
     alert_enabled: !!row.alert_enabled,
-    online: row.last_seen != null && now - Number(row.last_seen) <= OFFLINE_SECONDS,
-    alert_config: {
-      cpu: Number(cfg.cpu) || 90,
-      mem: Number(cfg.mem) || 90,
-      disk: Number(cfg.disk) || 90
-    }
+    online: row.last_seen != null && now - Number(row.last_seen) <= OFFLINE_SECONDS
   }
 }
 
 function readFields(body) {
-  const cfg = body.alert_config && typeof body.alert_config === 'object' ? body.alert_config : {}
   const expire = String(body.expire_date || '').trim()
   const channelIds = Array.isArray(body.channel_ids)
     ? body.channel_ids.map(Number).filter(Boolean).join(',')
@@ -54,12 +38,7 @@ function readFields(body) {
     sort_order: parseInt(body.sort_order, 10) || 0,
     hidden: body.hidden ? 1 : 0,
     alert_enabled: body.alert_enabled === false ? 0 : 1,
-    channel_ids: channelIds,
-    alert_config: JSON.stringify({
-      cpu: clampNum(cfg.cpu, 90),
-      mem: clampNum(cfg.mem, 90),
-      disk: clampNum(cfg.disk, 90)
-    })
+    channel_ids: channelIds
   }
 }
 
@@ -70,7 +49,7 @@ routes.get('/', async (c) => {
   return c.json(results.map(parseRow))
 })
 
-// 手动检查一次离线/资源/到期状态（会按需推送告警）
+// 手动检查一次离线/到期状态（会按需推送告警）
 routes.post('/check', async (c) => {
   const summary = await runServerChecks(c.env)
   return c.json({ ok: true, ...summary })
@@ -103,9 +82,8 @@ routes.post('/', async (c) => {
   const result = await c.env.DB.prepare(
     `INSERT INTO servers
        (name, flag, region, ip, group_name, agent_token, traffic_reset_day,
-        expire_date, bill, hidden, sort_order, alert_enabled, channel_ids,
-        alert_config, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        expire_date, bill, hidden, sort_order, alert_enabled, channel_ids, created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   )
     .bind(
       f.name,
@@ -121,7 +99,6 @@ routes.post('/', async (c) => {
       f.sort_order,
       f.alert_enabled,
       f.channel_ids,
-      f.alert_config,
       now
     )
     .run()
@@ -139,7 +116,7 @@ routes.put('/:id', async (c) => {
     `UPDATE servers
         SET name=?, flag=?, region=?, ip=?, group_name=?, traffic_reset_day=?,
             expire_date=?, bill=?, hidden=?, sort_order=?, alert_enabled=?,
-            channel_ids=?, alert_config=?
+            channel_ids=?
       WHERE id=?`
   )
     .bind(
@@ -155,7 +132,6 @@ routes.put('/:id', async (c) => {
       f.sort_order,
       f.alert_enabled,
       f.channel_ids,
-      f.alert_config,
       id
     )
     .run()
@@ -171,9 +147,8 @@ routes.post('/:id/duplicate', async (c) => {
   const result = await c.env.DB.prepare(
     `INSERT INTO servers
        (name, flag, region, ip, group_name, agent_token, traffic_reset_day,
-        expire_date, bill, hidden, sort_order, alert_enabled, channel_ids,
-        alert_config, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        expire_date, bill, hidden, sort_order, alert_enabled, channel_ids, created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   )
     .bind(
       `${row.name} 副本`,
@@ -189,7 +164,6 @@ routes.post('/:id/duplicate', async (c) => {
       (Number(row.sort_order) || 0) + 1,
       row.alert_enabled,
       row.channel_ids,
-      row.alert_config,
       now
     )
     .run()

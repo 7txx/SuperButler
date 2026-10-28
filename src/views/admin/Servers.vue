@@ -306,19 +306,6 @@
             <el-option v-for="ch in channels" :key="ch.id" :label="ch.name" :value="ch.id" />
           </el-select>
         </el-form-item>
-        <el-form-item v-if="form.alert_enabled" label="告警阈值">
-          <div class="flex flex-wrap items-center gap-2 text-sm">
-            <span class="text-brand-200/60">CPU</span>
-            <el-input-number v-model="form.threshold_cpu" :min="1" :max="100" size="small" class="!w-20" />
-            <span class="text-brand-200/40">%</span>
-            <span class="ml-2 text-brand-200/60">内存</span>
-            <el-input-number v-model="form.threshold_mem" :min="1" :max="100" size="small" class="!w-20" />
-            <span class="text-brand-200/40">%</span>
-            <span class="ml-2 text-brand-200/60">磁盘</span>
-            <el-input-number v-model="form.threshold_disk" :min="1" :max="100" size="small" class="!w-20" />
-            <span class="text-brand-200/40">%</span>
-          </div>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialog = false">取消</el-button>
@@ -431,10 +418,7 @@ const emptyForm = () => ({
   sort_order: 0,
   hidden: false,
   alert_enabled: true,
-  channel_ids: [],
-  threshold_cpu: 90,
-  threshold_mem: 90,
-  threshold_disk: 90
+  channel_ids: []
 })
 const form = ref(emptyForm())
 
@@ -507,10 +491,7 @@ function openEdit(row) {
           .split(',')
           .map(Number)
           .filter(Boolean)
-      : [],
-    threshold_cpu: row.alert_config?.cpu || 90,
-    threshold_mem: row.alert_config?.mem || 90,
-    threshold_disk: row.alert_config?.disk || 90
+      : []
   }
   dialog.value = true
 }
@@ -529,12 +510,7 @@ async function save() {
     sort_order: form.value.sort_order,
     hidden: form.value.hidden,
     alert_enabled: form.value.alert_enabled,
-    channel_ids: form.value.channel_ids,
-    alert_config: {
-      cpu: form.value.threshold_cpu,
-      mem: form.value.threshold_mem,
-      disk: form.value.threshold_disk
-    }
+    channel_ids: form.value.channel_ids
   }
 
   let newId = null

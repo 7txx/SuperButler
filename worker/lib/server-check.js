@@ -1,11 +1,10 @@
-// 服务器状态检查与告警：离线、资源阈值、到期提醒
+// 服务器状态检查与告警：离线/恢复、到期提醒
 // 复用现有通知渠道（PushPlus / Resend），由 cron 每 5 分钟执行一次
 
 import { dispatchChannel } from '../notify/index.js'
 import { toDateStr, diffDays } from './dateutil.js'
 
 const OFFLINE_SECONDS = 180 // 3 个上报周期未上报视为离线
-const METRIC_FRESH_SECONDS = 600 // 超过 10 分钟的指标不参与资源告警
 const EXPIRY_DAYS = 7
 const EXPIRY_GRACE_DAYS = 3
 const METRIC_RETENTION_DAYS = 30 // 指标历史保留天数
@@ -16,24 +15,6 @@ function esc(v) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-}
-
-function pct(used, total) {
-  const t = Number(total) || 0
-  if (t <= 0) return null
-  return Math.round((Number(used) / t) * 1000) / 10
-}
-
-function bytesText(n) {
-  const v = Number(n) || 0
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  let i = 0
-  let x = v
-  while (x >= 1024 && i < units.length - 1) {
-    x /= 1024
-    i++
-  }
-  return `${x.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
 }
 
 function alertHtml(server, title, rows) {
@@ -90,18 +71,6 @@ async function sendAlert(env, server, title, rows) {
   return sent
 }
 
-function alertConfig(server) {
-  let cfg = {}
-  try {
-    cfg = JSON.parse(server.alert_config || '{}')
-  } catch {}
-  return {
-    cpu: Number(cfg.cpu) || 90,
-    mem: Number(cfg.mem) || 90,
-    disk: Number(cfg.disk) || 90
-  }
-}
-
 /**
  * 清理过期指标（默认保留 30 天），每天最多执行一次
  */
@@ -120,7 +89,7 @@ async function cleanupOldMetrics(env, today) {
 }
 
 /**
- * 检查全部服务器：更新在线状态，按状态变化推送离线/恢复、资源阈值、到期提醒
+ * 检查全部服务器：更新在线状态，按状态变化推送离线/恢复、到期提醒
  */
 export async function runServerChecks(env) {
   const now = Math.floor(Date.now() / 1000)
@@ -166,52 +135,7 @@ export async function runServerChecks(env) {
       ])
     }
 
-    // 2) 资源阈值（仅在线且指标新鲜）
-    if (online) {
-      const metric = await env.DB.prepare(
-        'SELECT * FROM server_metrics WHERE server_id=? ORDER BY ts DESC LIMIT 1'
-      )
-        .bind(server.id)
-        .first()
-
-      if (metric && now - Number(metric.ts) <= METRIC_FRESH_SECONDS) {
-        const cfg = alertConfig(server)
-        const checks = [
-          ['cpu', Number(metric.cpu), cfg.cpu, 'CPU 使用率', `${Number(metric.cpu).toFixed(1)}%`],
-          ['mem', pct(metric.mem_used, metric.mem_total), cfg.mem, '内存使用率', `${pct(metric.mem_used, metric.mem_total)}%`],
-          ['disk', pct(metric.disk_used, metric.disk_total), cfg.disk, '磁盘使用率', `${pct(metric.disk_used, metric.disk_total)}%`]
-        ]
-
-        for (const [key, value, threshold, label, valueText] of checks) {
-          if (value == null || !Number.isFinite(value)) continue
-          const breach = value >= threshold
-          if (breach && !states.has(key)) {
-            states.add(key)
-            changed = true
-            sent += await sendAlert(env, server, `【服务器告警】${server.name} ${label}过高`, [
-              ['服务器', server.name],
-              ['IP', server.ip || '—'],
-              ['指标', label],
-              ['当前值', valueText],
-              ['阈值', `${threshold}%`],
-              ['内存', metric.mem_total ? `${bytesText(metric.mem_used)} / ${bytesText(metric.mem_total)}` : null],
-              ['磁盘', metric.disk_total ? `${bytesText(metric.disk_used)} / ${bytesText(metric.disk_total)}` : null]
-            ])
-          } else if (!breach && states.has(key)) {
-            states.delete(key)
-            changed = true
-            sent += await sendAlert(env, server, `【服务器恢复】${server.name} ${label}已恢复正常`, [
-              ['服务器', server.name],
-              ['指标', label],
-              ['当前值', valueText],
-              ['阈值', `${threshold}%`]
-            ])
-          }
-        }
-      }
-    }
-
-    // 3) 到期提醒（到期前 7 天到逾期 3 天内，每天一次）
+    // 2) 到期提醒（到期前 7 天到逾期 3 天内，每天一次）
     if (server.expire_date) {
       const daysLeft = diffDays(today, server.expire_date)
       if (

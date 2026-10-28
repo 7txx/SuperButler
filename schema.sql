@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS servers (
   sort_order         INTEGER NOT NULL DEFAULT 0,
   alert_enabled      INTEGER NOT NULL DEFAULT 1,
   channel_ids        TEXT NOT NULL DEFAULT '',      -- 绑定渠道，空串=所有已启用渠道
-  alert_config       TEXT NOT NULL DEFAULT '{}',    -- 阈值 JSON：cpu/mem/disk
+  alert_config       TEXT NOT NULL DEFAULT '{}',    -- 预留字段，当前版本未使用
   alert_state        TEXT NOT NULL DEFAULT '',      -- 已触发的告警，逗号分隔
   expire_notice_date TEXT NOT NULL DEFAULT '',      -- 最近一次到期提醒日期
   created_at         INTEGER NOT NULL
